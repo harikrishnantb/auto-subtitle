@@ -6,7 +6,22 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 ### Installation
 
 1. Install [ffmpeg](https://www.ffmpeg.org/).
-2. Run `pip install autosub`.
+2. Install in local machine
+
+  sudo python setup.py install --record files.txt
+
+  for uninstalling 
+ 
+  sudo cat files.txt |sudo  xargs rm -rf
+
+3. Need to setup Google Cloud speech api account, project and download server account key(json file)
+    
+   [Google Cloud Speech API Setup](https://cloud.google.com/speech/docs/getting-started)
+
+4. Create ENV variable GOOGLE_APPLICATION_CREDENTIALS and set the speech api server account json file as value, for temp setup use,
+
+$export GOOGLE_APPLICATION_CREDENTIALS= /home/user/speechapi.json
+
 
 ### Usage
 

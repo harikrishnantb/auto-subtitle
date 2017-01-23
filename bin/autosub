@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import base64
 import audioop
 from googleapiclient.discovery import build
 import json
@@ -11,12 +12,19 @@ import subprocess
 import sys
 import tempfile
 import wave
+from googleapiclient import discovery
+import httplib2
+from oauth2client.client import GoogleCredentials
 
 from progressbar import ProgressBar, Percentage, Bar, ETA
 
 from autosub.constants import LANGUAGE_CODES, \
     GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL
 from autosub.formatters import FORMATTERS
+
+# [START authenticating]
+DISCOVERY_URL = ('https://{api}.googleapis.com/$discovery/rest?'
+                 'version={apiVersion}')
 
 
 def percentile(arr, percent):
@@ -49,6 +57,7 @@ class FLACConverter(object):
             command = ["ffmpeg","-ss", str(start), "-t", str(end - start),
                        "-y", "-i", self.source_path,
                        "-loglevel", "error", temp.name]
+            command= ["sox", self.source_path, "--channels=1", "--bits=16", "--rate=16000", temp.name,"trim", str(start), str(end - start)]
             subprocess.check_output(command)
             os.system('stty sane')
             return temp.read()
@@ -58,31 +67,22 @@ class FLACConverter(object):
 
 
 class SpeechRecognizer(object):
-    def __init__(self, language="en", rate=44100, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
+    def __init__(self, language="en-US", rate=16000, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
         self.language = language
         self.rate = rate
         self.api_key = api_key
         self.retries = retries
+        
 
     def __call__(self, data):
         try:
             for i in range(self.retries):
-                url = GOOGLE_SPEECH_API_URL.format(lang=self.language, key=self.api_key)
-                headers = {"Content-Type": "audio/x-flac; rate=%d" % self.rate}
-
                 try:
-                    resp = requests.post(url, data=data, headers=headers)
+                    datas = base64.b64encode(data)
+                    resp = get_speech_text(datas)
+                    return resp
                 except requests.exceptions.ConnectionError:
                     continue
-
-                for line in resp.content.split("\n"):
-                    try:
-                        line = json.loads(line)
-                        line = line['result'][0]['alternative'][0]['transcript']
-                        return line[:1].upper() + line[1:]
-                    except:
-                        # no result
-                        continue
 
         except KeyboardInterrupt:
             return
@@ -140,6 +140,7 @@ def extract_audio(filename, channels=1, rate=16000):
         print "ffmpeg: Executable not found on machine."
         raise Exception("Dependency not found: ffmpeg")
     command = ["ffmpeg", "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate), "-loglevel", "error", temp.name]
+    print command
     subprocess.check_output(command)
     return temp.name, rate
 
@@ -160,8 +161,7 @@ def find_speech_regions(filename, frame_width=4096, min_region_size=0.5, max_reg
         chunk = reader.readframes(frame_width)
         energies.append(audioop.rms(chunk, sample_width * n_channels))
 
-    threshold = percentile(energies, 0.2)
-
+    threshold = percentile(energies, 0.15)
     elapsed_time = 0
 
     regions = []
@@ -180,6 +180,60 @@ def find_speech_regions(filename, frame_width=4096, min_region_size=0.5, max_reg
             region_start = elapsed_time
         elapsed_time += chunk_duration
     return regions
+
+# Application default credentials provided by env variable
+# GOOGLE_APPLICATION_CREDENTIALS
+def get_speech_service():
+    credentials = GoogleCredentials.get_application_default().create_scoped(
+        ['https://www.googleapis.com/auth/cloud-platform'])
+    http = httplib2.Http()
+    credentials.authorize(http)
+
+    return discovery.build(
+        'speech', 'v1beta1', http=http, discoveryServiceUrl=DISCOVERY_URL)
+# [END authenticating]
+
+
+def get_speech_text(speech_data):
+    """Transcribe the given audio file.
+
+    Args:
+        speech_file: the name of the audio file.
+    """
+    # [START construct_request]
+    #with open(speech_file, 'rb') as speech:
+        # Base64 encode the binary audio file for inclusion in the JSON
+        # request.
+        #speech_content = base64.b64encode(speech.read())
+    speech_content = speech_data
+    service = get_speech_service()
+    try:
+        service_request = service.speech().syncrecognize(
+            body={
+                'config': {
+                    # There are a bunch of config options you can specify. See
+                    # https://goo.gl/KPZn97 for the full list.
+                    'encoding': 'FLAC',  # raw 16-bit signed LE samples
+                    'sampleRate': 16000,  # 16 khz
+                    # See http://g.co/cloud/speech/docs/languages for a list of
+                    # supported languages.
+                    'languageCode': 'en-US',  # a BCP-47 language tag
+                },
+                'audio': {
+                    'content': speech_content.decode('UTF-8')
+                    }
+                })
+        # [END construct_request]
+        # [START send_request]
+        response = service_request.execute()
+        r  = json.dumps(response)
+        result = json.loads(r)
+        #print result['results'][0]['alternatives'][0]['transcript']
+        # [END send_request]
+        return result['results'][0]['alternatives'][0]['transcript']
+    except:
+        # no result
+        return    
 
 
 def main():
@@ -234,7 +288,7 @@ def main():
 
     pool = multiprocessing.Pool(args.concurrency)
     converter = FLACConverter(source_path=audio_filename)
-    recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
+    recognizer = SpeechRecognizer(language='en-US', rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
 
     transcripts = []
     if regions:
