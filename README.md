@@ -45,9 +45,6 @@ optional arguments:
                         path)
   -F FORMAT, --format FORMAT
                         Destination subtitle format
-  -S SRC_LANGUAGE, --src-language SRC_LANGUAGE
-                        Language spoken in source file
-  -D DST_LANGUAGE, --dst-language DST_LANGUAGE
                         Desired language for the subtitles
   -K API_KEY, --api-key API_KEY
                         The Google Translate API key to be used. (Required for
@@ -59,3 +56,5 @@ optional arguments:
 ### License
 
 MIT
+
+Thanks - [Agermanidis](https://github.com/agermanidis)
