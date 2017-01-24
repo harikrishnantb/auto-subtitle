@@ -5,7 +5,8 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 
 ### Installation
 
-1. Install [ffmpeg](https://www.ffmpeg.org/)
+1. Install [ffmpeg](https://www.ffmpeg.org/), 
+
    Install [sox](http://sox.sourceforge.net/sox.html).
 
 2. Install in local machine
