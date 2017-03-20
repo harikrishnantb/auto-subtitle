@@ -9,6 +9,14 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 
    Install [sox](http://sox.sourceforge.net/sox.html).
 
+   sudo apt-get -y install python-pip
+
+   sudo pip install --upgrade google-api-python-client
+
+   sudo pip install progressbar
+
+   sudo pip install pysrt
+
 2. Install in local machine
 
   sudo python setup.py install --record files.txt
