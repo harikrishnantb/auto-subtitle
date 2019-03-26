@@ -33,6 +33,8 @@ Autosub is a utility for automatic speech recognition and subtitle generation. I
 
 $export GOOGLE_APPLICATION_CREDENTIALS= /home/user/speechapi.json
 
+To set it permanently for all future bash sessions add such line to your .bashrc file in your $HOME directory.
+
 Tested on ubuntu -linux machine
 
 ### Usage
