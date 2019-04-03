@@ -190,7 +190,7 @@ def get_speech_service():
     credentials.authorize(http)
 
     return discovery.build(
-        'speech', 'v1beta1', http=http, discoveryServiceUrl=DISCOVERY_URL)
+        'speech', 'v1', http=http, discoveryServiceUrl=DISCOVERY_URL)
 # [END authenticating]
 
 
@@ -208,13 +208,13 @@ def get_speech_text(speech_data):
     speech_content = speech_data
     service = get_speech_service()
     try:
-        service_request = service.speech().syncrecognize(
+        service_request = service.speech().recognize(
             body={
                 'config': {
                     # There are a bunch of config options you can specify. See
                     # https://goo.gl/KPZn97 for the full list.
                     'encoding': 'FLAC',  # raw 16-bit signed LE samples
-                    'sampleRate': 16000,  # 16 khz
+                    'sample_rate_hertz': 16000,  # 16 khz
                     # See http://g.co/cloud/speech/docs/languages for a list of
                     # supported languages.
                     'languageCode': 'en-US',  # a BCP-47 language tag
@@ -226,14 +226,15 @@ def get_speech_text(speech_data):
         # [END construct_request]
         # [START send_request]
         response = service_request.execute()
+       
         r  = json.dumps(response)
         result = json.loads(r)
         #print result['results'][0]['alternatives'][0]['transcript']
         # [END send_request]
         return result['results'][0]['alternatives'][0]['transcript']
-    except:
-        # no result
-        return    
+    except Exception as e: print(e)
+        
+    return    
 
 
 def main():
